@@ -1,0 +1,40 @@
+name: Repo Health Check
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # daily at 00:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  check-branches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check repository branches via API
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const branchesResp = await github.rest.repos.listBranches({ owner, repo, per_page: 100 });
+            const branchNames = branchesResp.data.map(b => b.name);
+            console.log(`Found branches: ${branchNames.join(', ')}`);
+
+            // If more than the default branch exists, create an issue (once)
+            if (branchNames.length > 1) {
+              const title = 'Repo health: additional branches detected';
+              const openIssues = await github.rest.issues.listForRepo({ owner, repo, state: 'open', per_page: 100 });
+              const already = openIssues.data.some(i => i.title === title);
+              if (!already) {
+                await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title,
+                  body: `Detected branches in the repository: ${branchNames.join(', ')}\n\nThis issue was created automatically by the scheduled repo-health workflow.`
+                });
+              } else {
+                console.log('Open issue about additional branches already exists.');
+              }
+            } else {
+              console.log('Only the default branch is present. No action required.');
+            }
