@@ -15,6 +15,13 @@ import logging
 os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
 os.environ.setdefault("TRANSFORMERS_NO_TORCHVISION", "1")
 from providers.factory import get_ai_provider
+import debugpy
+
+# Remote Debugging for GCE
+if os.getenv("DEBUG_MODE") == "true":
+    debugpy.listen(("0.0.0.0", 5678))
+    print("Waiting for debugger to attach...")
+    # debugpy.wait_for_client() # Optional: pauses execution until debugger connects
 
 # Initialize AI Provider
 ai_provider = get_ai_provider()
