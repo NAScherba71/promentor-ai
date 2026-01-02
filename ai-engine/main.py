@@ -14,7 +14,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 import logging
 os.environ.setdefault("TRANSFORMERS_NO_TF", "1")
 os.environ.setdefault("TRANSFORMERS_NO_TORCHVISION", "1")
-from models import get_custom_tutor, get_custom_analyzer
+from providers.factory import get_ai_provider
+
+# Initialize AI Provider
+ai_provider = get_ai_provider()
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -51,9 +55,8 @@ class AITutor:
     def generate_response(self, user_message, context, personality='encouraging'):
         """Generate AI tutor response based on user input and context"""
         try:
-            # Use custom local ML model instead of OpenAI
-            custom_tutor = get_custom_tutor()
-            response = custom_tutor.generate_response(user_message, context, personality)
+            # Use the selected AI provider
+            response = ai_provider.generate_chat_response(user_message, context, personality)
             
             return response
             
@@ -269,8 +272,7 @@ class CodeAnalyzer:
     def analyze_code(self, code, language, challenge_context=None):
         """Analyze submitted code and provide feedback"""
         try:
-            # Get custom analyzer for AI-enhanced analysis
-            custom_analyzer = get_custom_analyzer()
+            # The provider is already initialized globally as ai_provider
             
             analysis = {
                 'syntax_errors': self._check_syntax(code, language),
@@ -282,7 +284,7 @@ class CodeAnalyzer:
             
             # Add AI-powered analysis if available
             try:
-                ai_analysis = custom_analyzer.analyze_with_ai(code, language)
+                ai_analysis = ai_provider.analyze_code(code, language)
                 analysis['ai_insights'] = ai_analysis
             except Exception as e:
                 logger.warning(f"AI analysis unavailable: {e}")

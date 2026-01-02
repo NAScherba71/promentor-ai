@@ -23,6 +23,10 @@ def test_api_structure():
     sys.modules['sklearn.feature_extraction.text'] = Mock()
     sys.modules['sklearn.metrics'] = Mock()
     sys.modules['sklearn.metrics.pairwise'] = Mock()
+    sys.modules['vertexai'] = Mock()
+    sys.modules['vertexai.generative_models'] = Mock()
+    sys.modules['requests'] = Mock()
+
     
     try:
         # Import models module
@@ -34,16 +38,18 @@ def test_api_structure():
         assert models.ModelConfig.CODE_MODEL == "Salesforce/codet5-small"
         print("  ✓ ModelConfig properly defined")
         
-        # Test that model classes exist
-        assert hasattr(models, 'ModelLoader'), "ModelLoader not found"
-        assert hasattr(models, 'CustomAITutor'), "CustomAITutor not found"
-        assert hasattr(models, 'CustomCodeAnalyzer'), "CustomCodeAnalyzer not found"
-        print("  ✓ All model classes exist")
+        # Test Providers
+        import providers
+        assert hasattr(providers, 'get_ai_provider'), "get_ai_provider not found"
+        print("  ✓ Provider factory properly defined")
         
-        # Test factory functions
-        assert hasattr(models, 'get_custom_tutor'), "get_custom_tutor not found"
-        assert hasattr(models, 'get_custom_analyzer'), "get_custom_analyzer not found"
-        print("  ✓ Factory functions exist")
+        # Test Provider Implementations exist
+        import providers.base
+        import providers.local
+        import providers.vertex
+        import providers.openrouter
+        assert hasattr(providers.base, 'AIProvider'), "AIProvider interface not found"
+        print("  ✓ All provider classes exist")
         
         return True
         
@@ -123,20 +129,20 @@ def test_main_integration():
             main_content = f.read()
         
         # Check imports
-        assert 'from models import get_custom_tutor, get_custom_analyzer' in main_content
-        print("  ✓ Custom models imported in main.py")
+        assert 'from providers.factory import get_ai_provider' in main_content
+        print("  ✓ Provider factory imported in main.py")
         
         # Check OpenAI is removed
         assert 'import openai' not in main_content
         print("  ✓ OpenAI import removed")
         
-        # Check custom tutor is used
-        assert 'get_custom_tutor()' in main_content
-        print("  ✓ Custom tutor used in code")
+        # Check provider is used
+        assert 'ai_provider.generate_chat_response' in main_content
+        print("  ✓ Provider chat method used in code")
         
-        # Check custom analyzer is used
-        assert 'get_custom_analyzer()' in main_content
-        print("  ✓ Custom analyzer used in code")
+        # Check provider analyzer is used
+        assert 'ai_provider.analyze_code' in main_content
+        print("  ✓ Provider analysis method used in code")
         
         # Check async is removed from ai_tutor_chat
         lines = main_content.split('\n')
