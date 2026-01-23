@@ -27,6 +27,9 @@ jobs:
             console.log(`Found branches: ${branches.join(', ')}`);
 
             // Get all merged PRs
+            // Note: This fetches up to 100 recent closed PRs.
+            // For repos with many PRs, some older merged branches
+            // may not be detected. Run this workflow periodically.
             const mergedPRs = await github.rest.pulls.list({
               owner,
               repo,
@@ -53,6 +56,7 @@ jobs:
             const toDelete = branchesToDelete.join(', ');
             console.log(`Branches to delete: ${toDelete}`);
 
+            let deletedCount = 0;
             for (const branch of branchesToDelete) {
               try {
                 await github.rest.git.deleteRef({
@@ -61,6 +65,7 @@ jobs:
                   ref: `heads/${branch}`
                 });
                 console.log(`✓ Deleted branch: ${branch}`);
+                deletedCount++;
               } catch (error) {
                 const msg = error.message;
                 console.log(`✗ Failed to delete ${branch}: ${msg}`);
@@ -68,10 +73,18 @@ jobs:
             }
 
             // Close repo health issue if stale branches are cleaned
-            const remaining = branches.filter(
-              b => !branchesToDelete.includes(b)
-            );
-            if (remaining.length <= 1) {
+            // Only check if we actually deleted branches
+            if (deletedCount > 0) {
+              // Re-fetch branches to get current state
+              const updatedResp = await github.rest.repos.listBranches({
+                owner,
+                repo,
+                per_page: 100
+              });
+              const remainingBranches = updatedResp.data.map(b => b.name);
+
+              // If only 1 or fewer branches remain, close the issue
+              if (remainingBranches.length <= 1) {
               const issues = await github.rest.issues.listForRepo({
                 owner,
                 repo,
@@ -97,3 +110,4 @@ jobs:
                 console.log(`✓ Closed issue #${healthIssue.number}`);
               }
             }
+          }

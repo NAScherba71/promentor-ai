@@ -41,7 +41,7 @@ jobs:
             }
 
             // Don't delete main or master branches
-            const protected = ['main', 'master'];
+            const protected = ['main', 'master', 'develop', 'development'];
             if (protected.includes(branchToDelete)) {
               console.log(
                 `Skipping deletion of protected: ${branchToDelete}`

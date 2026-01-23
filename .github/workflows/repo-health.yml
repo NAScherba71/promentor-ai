@@ -16,6 +16,8 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
+            // Fetch branches (up to 100)
+            // Note: For repos with >100 branches, not all will be checked
             const branchesResp = await github.rest.repos.listBranches({
               owner, repo, per_page: 100
             });
