@@ -1,0 +1,99 @@
+name: Cleanup Stale Branches
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  cleanup-stale-branches:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - name: Cleanup stale branches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Get all branches
+            const branchesResp = await github.rest.repos.listBranches({
+              owner,
+              repo,
+              per_page: 100
+            });
+            const branches = branchesResp.data.map(b => b.name);
+            console.log(`Found branches: ${branches.join(', ')}`);
+
+            // Get all merged PRs
+            const mergedPRs = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'closed',
+              per_page: 100
+            });
+
+            const mergedBranches = mergedPRs.data
+              .filter(pr => pr.merged_at)
+              .map(pr => pr.head.ref);
+
+            const merged = mergedBranches.join(', ');
+            console.log(`Found merged PR branches: ${merged}`);
+
+            // Delete branches that have been merged
+            const protected = [
+              'main', 'master', 'develop', 'development'
+            ];
+            const branchesToDelete = branches.filter(branch =>
+              mergedBranches.includes(branch) &&
+              !protected.includes(branch)
+            );
+
+            const toDelete = branchesToDelete.join(', ');
+            console.log(`Branches to delete: ${toDelete}`);
+
+            for (const branch of branchesToDelete) {
+              try {
+                await github.rest.git.deleteRef({
+                  owner,
+                  repo,
+                  ref: `heads/${branch}`
+                });
+                console.log(`✓ Deleted branch: ${branch}`);
+              } catch (error) {
+                const msg = error.message;
+                console.log(`✗ Failed to delete ${branch}: ${msg}`);
+              }
+            }
+
+            // Close repo health issue if stale branches are cleaned
+            const remaining = branches.filter(
+              b => !branchesToDelete.includes(b)
+            );
+            if (remaining.length <= 1) {
+              const issues = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                state: 'open',
+                per_page: 100
+              });
+
+              const title = 'Repo health: additional branches detected';
+              const healthIssue = issues.data.find(i =>
+                i.title === title
+              );
+
+              if (healthIssue) {
+                const resolved =
+                  '\n\n---\n\nResolved: Stale branches cleaned.';
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: healthIssue.number,
+                  state: 'closed',
+                  body: healthIssue.body + resolved
+                });
+                console.log(`✓ Closed issue #${healthIssue.number}`);
+              }
+            }

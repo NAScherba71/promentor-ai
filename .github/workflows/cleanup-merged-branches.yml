@@ -1,0 +1,66 @@
+name: Cleanup Merged Branches
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: 'Branch name to delete (optional)'
+        required: false
+        type: string
+
+jobs:
+  delete-merged-branch:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Delete merged branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            let branchToDelete;
+
+            if (context.eventName === 'workflow_dispatch') {
+              branchToDelete = '${{ inputs.branch_name }}';
+              // If no branch specified in manual run, skip
+              if (!branchToDelete) {
+                console.log('No branch specified for manual cleanup.');
+                return;
+              }
+            } else {
+              // For PR merged events, delete the PR's head branch
+              branchToDelete = context.payload.pull_request.head.ref;
+            }
+
+            // Don't delete main or master branches
+            const protected = ['main', 'master'];
+            if (protected.includes(branchToDelete)) {
+              console.log(
+                `Skipping deletion of protected: ${branchToDelete}`
+              );
+              return;
+            }
+
+            try {
+              await github.rest.git.deleteRef({
+                owner,
+                repo,
+                ref: `heads/${branchToDelete}`
+              });
+              console.log(`Successfully deleted: ${branchToDelete}`);
+            } catch (error) {
+              const msg = error.message;
+              console.log(`Failed to delete ${branchToDelete}: ${msg}`);
+              // Don't fail the workflow if branch doesn't exist
+              if (error.status !== 422) {
+                throw error;
+              }
+            }

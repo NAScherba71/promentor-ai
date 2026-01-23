@@ -16,25 +16,52 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
-            const branchesResp = await github.rest.repos.listBranches({ owner, repo, per_page: 100 });
+            const branchesResp = await github.rest.repos.listBranches({
+              owner, repo, per_page: 100
+            });
             const branchNames = branchesResp.data.map(b => b.name);
             console.log(`Found branches: ${branchNames.join(', ')}`);
 
             // If more than the default branch exists, create an issue (once)
             if (branchNames.length > 1) {
               const title = 'Repo health: additional branches detected';
-              const openIssues = await github.rest.issues.listForRepo({ owner, repo, state: 'open', per_page: 100 });
-              const already = openIssues.data.some(i => i.title === title);
+              const openIssues = await github.rest.issues.listForRepo({
+                owner, repo, state: 'open', per_page: 100
+              });
+              const already = openIssues.data.some(
+                i => i.title === title
+              );
               if (!already) {
+                const howTo = [
+                  '## How to Fix',
+                  '',
+                  'To clean up stale branches that have been merged:',
+                  '1. Go to Actions tab',
+                  '2. Select "Cleanup Stale Branches" workflow',
+                  '3. Click "Run workflow"',
+                  '',
+                  'This will automatically delete merged branches.'
+                ].join('\n');
+                const body = [
+                  `Detected branches: ${branchNames.join(', ')}`,
+                  '',
+                  'This issue was created by repo-health workflow.',
+                  '',
+                  howTo
+                ].join('\n');
                 await github.rest.issues.create({
                   owner,
                   repo,
                   title,
-                  body: `Detected branches in the repository: ${branchNames.join(', ')}\n\nThis issue was created automatically by the scheduled repo-health workflow.`
+                  body
                 });
               } else {
-                console.log('Open issue about additional branches already exists.');
+                console.log(
+                  'Open issue about additional branches exists.'
+                );
               }
             } else {
-              console.log('Only the default branch is present. No action required.');
+              console.log(
+                'Only the default branch is present. No action required.'
+              );
             }
