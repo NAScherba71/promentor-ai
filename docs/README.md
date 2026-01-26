@@ -40,6 +40,7 @@ This documentation is organized into several key sections to help you understand
 | [**Docker Deployment**](deployment/README.md#docker-compose-deployment) | Container-based deployment | DevOps Engineers |
 | [**Kubernetes Deployment**](deployment/kubernetes.md) | Enterprise Kubernetes setup | Platform Engineers |
 | [**Monitoring Setup**](deployment/README.md#monitoring-and-alerting) | Observability and alerting | SRE Teams |
+| [**Repository Maintenance**](REPOSITORY_MAINTENANCE.md) | Automated branch cleanup and repo health | DevOps Engineers, Maintainers |
 
 ### ⚡ Performance & Optimization
 
@@ -69,6 +70,7 @@ This documentation is organized into several key sections to help you understand
 2. Study [Kubernetes Deployment](deployment/kubernetes.md) for enterprise scaling
 3. Configure [Monitoring](deployment/README.md#monitoring-and-alerting) for observability
 4. Analyze [Performance Benchmarks](performance/benchmarks.md) for capacity planning
+5. Check [Repository Maintenance](REPOSITORY_MAINTENANCE.md) for automated repo health workflows
 
 ### 🎓 **For Educators & Students**
 1. Follow the [Tutorial](TUTORIAL.md) to learn platform features
